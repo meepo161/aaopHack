@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@id/layoutBack"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@id/layoutWork"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:background="@drawable/back"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/divh"
+            android:gravity="right">
+
+            <ImageView
+                android:id="@id/imageLogo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="10.0dip"
+                android:src="@drawable/ic_launcher" />
+
+            <TextView
+                android:id="@id/appTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="fill_parent"
+                android:layout_alignBottom="@id/imageLogo"
+                android:layout_alignParentTop="true"
+                android:layout_toLeftOf="@id/searchPrg"
+                android:layout_toRightOf="@id/imageLogo"
+                android:gravity="center"
+                android:shadowColor="#ffffffff"
+                android:shadowDx="1.0"
+                android:shadowDy="1.0"
+                android:shadowRadius="2.0"
+                android:text="@string/app_longname"
+                android:textAppearance="?android:textAppearanceMedium" />
+
+            <ProgressBar
+                android:id="@id/searchPrg"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignBottom="@id/appTitle"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentRight="true"
+                android:layout_marginRight="10.0dip" />
+        </RelativeLayout>
+
+        <ImageView
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:scaleType="fitXY"
+            android:src="@drawable/divh" />
+
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@id/btnClose"
+                android:layout_width="wrap_content"
+                android:layout_height="fill_parent"
+                android:layout_weight="1.0"
+                android:src="@drawable/ic_lock_power_off" />
+
+            <ImageButton
+                android:id="@id/btnSave"
+                android:layout_width="wrap_content"
+                android:layout_height="fill_parent"
+                android:layout_weight="1.0"
+                android:src="@drawable/ic_menu_save1" />
+
+            <ImageButton
+                android:id="@id/btnLoad"
+                android:layout_width="wrap_content"
+                android:layout_height="fill_parent"
+                android:layout_weight="1.0"
+                android:src="@drawable/ic_menu_archive" />
+
+            <ImageButton
+                android:id="@id/autosetBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="fill_parent"
+                android:layout_weight="1.0"
+                android:src="@drawable/ic_autoset_off" />
+
+            <ImageButton
+                android:id="@id/btnHelp"
+                android:layout_width="wrap_content"
+                android:layout_height="fill_parent"
+                android:layout_weight="1.0"
+                android:src="@drawable/ic_menu_help1" />
+
+            <ImageButton
+                android:id="@id/btnOur"
+                android:layout_width="wrap_content"
+                android:layout_height="fill_parent"
+                android:layout_weight="1.0"
+                android:src="@drawable/ic_baseline_refresh_24" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@id/ImageView03"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:scaleType="fitXY"
+            android:src="@drawable/divh" />
+
+        <LinearLayout
+            android:id="@id/ctrlLayout"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:id="@id/linearLayoutC1"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content">
+
+                    <TextView
+                        android:id="@id/Channel1Lbl"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="left"
+                        android:text="1"
+                        android:textAppearance="?android:textAppearanceMedium"
+                        android:textColor="#ffff0000" />
+
+                    <Spinner
+                        android:id="@id/range1Spinner"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="0.8"
+                        android:entries="@array/rangeList" />
+
+                    <Spinner
+                        android:id="@id/cpl1Spinner"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.0"
+                        android:entries="@array/cplList" />
+
+                    <Spinner
+                        android:id="@id/probe1Spinner"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.0"
+                        android:entries="@array/probeList" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@id/linearLayoutC2"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content">
+
+                    <TextView
+                        android:id="@id/Channel2Lbl"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="left"
+                        android:text="2"
+                        android:textAppearance="?android:textAppearanceMedium"
+                        android:textColor="#ff0000ff" />
+
+                    <Spinner
+                        android:id="@id/range2Spinner"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="0.8"
+                        android:entries="@array/rangeList" />
+
+                    <Spinner
+                        android:id="@id/cpl2Spinner"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.0"
+                        android:entries="@array/cplList" />
+
+                    <Spinner
+                        android:id="@id/probe2Spinner"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.0"
+                        android:entries="@array/probeList" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <ImageView
+                android:id="@id/ImageView04"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:scaleType="fitXY"
+                android:src="@drawable/divh" />
+
+            <LinearLayout
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5.0dip">
+
+                <Spinner
+                    android:id="@id/tbSpinner"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:entries="@array/tbList" />
+
+                <Spinner
+                    android:id="@id/dataLenSpinner"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:entries="@array/lenList" />
+
+                <RelativeLayout
+                    android:layout_width="fill_parent"
+                    android:layout_height="fill_parent"
+                    android:layout_weight="1.0">
+
+                    <SeekBar
+                        android:id="@id/pretrgSeekBar"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentLeft="true"
+                        android:layout_centerVertical="true"
+                        android:max="1023"
+                        android:progress="511" />
+                </RelativeLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <Button
+            android:id="@id/ctrlShowBtn"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1.0dip"
+            android:drawableLeft="@android:drawable/arrow_up_float"
+            android:drawableRight="@android:drawable/arrow_up_float"
+            android:text="@string/control" />
+
+        <ImageView
+            android:id="@id/ImageView01"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:scaleType="fitXY"
+            android:src="@drawable/divh" />
+
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="fill_parent"
+                android:layout_weight="1.0"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@id/freq1Txt"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="f1: --- Hz"
+                    android:textAppearance="?android:textAppearanceMedium"
+                    android:textColor="#ffff0000" />
+
+                <TextView
+                    android:id="@id/amps1Txt"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="a1(sine): --- V"
+                    android:textAppearance="?android:textAppearanceMedium"
+                    android:textColor="#ffff0000" />
+
+                <TextView
+                    android:id="@id/ampp1Txt"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="a1(puls): --- V"
+                    android:textAppearance="?android:textAppearanceMedium"
+                    android:textColor="#ffff0000" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="fill_parent"
+                android:layout_weight="1.0"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@id/freq2Txt"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="f2: --- Hz"
+                    android:textAppearance="?android:textAppearanceMedium"
+                    android:textColor="#ff0000ff" />
+
+                <TextView
+                    android:id="@id/amps2Txt"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="a2(sine): --- V"
+                    android:textAppearance="?android:textAppearanceMedium"
+                    android:textColor="#ff0000ff" />
+
+                <TextView
+                    android:id="@id/ampp2Txt"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="a2(puls): --- V"
+                    android:textAppearance="?android:textAppearanceMedium"
+                    android:textColor="#ff0000ff" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@id/ImageView02"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:scaleType="fitXY"
+            android:src="@drawable/divh" />
+
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:weightSum="100.0">
+
+                <ToggleButton
+                    android:id="@id/runBtn"
+                    android:layout_width="0.0dip"
+                    android:layout_height="fill_parent"
+                    android:layout_weight="20.0"
+                    android:checked="true"
+                    android:textOff="@string/run"
+                    android:textOn="@string/stop" />
+
+                <Spinner
+                    android:id="@id/runmodeSpinner"
+                    android:layout_width="0.0dip"
+                    android:layout_height="fill_parent"
+                    android:layout_weight="30.0"
+                    android:entries="@array/runmodeList" />
+
+                <Spinner
+                    android:id="@id/trgsrcSpinner"
+                    android:layout_width="0.0dip"
+                    android:layout_height="fill_parent"
+                    android:layout_weight="15.0"
+                    android:entries="@array/trgsrcList" />
+
+                <Spinner
+                    android:id="@id/trglogSpinner"
+                    android:layout_width="0.0dip"
+                    android:layout_height="fill_parent"
+                    android:layout_weight="15.0"
+                    android:entries="@array/trglogList" />
+
+                <Spinner
+                    android:id="@id/generatorSpinner"
+                    android:layout_width="0.0dip"
+                    android:layout_height="fill_parent"
+                    android:layout_weight="20.0"
+                    android:entries="@array/generatorList" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@id/tvScale"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:text="T: 10 µs/d; 1: 1 V/d; 2: 1 V/d" />
+
+            <LinearLayout
+                android:id="@id/graphLayout"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:id="@id/trglevelLayout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="fill_parent"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@id/TrglvlLbl"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="T"
+                        android:textAppearance="?android:textAppearanceMedium"
+                        android:textColor="#ff008800" />
+
+                    <android.widget.VerticalSeekBar
+                        android:id="@id/trglevelSeekBar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="fill_parent"
+                        android:max="4095"
+                        android:progress="2047" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@id/ofs1Layout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="fill_parent"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@id/Offset1Lbl"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="1"
+                        android:textAppearance="?android:textAppearanceMedium"
+                        android:textColor="#ffff0000" />
+
+                    <android.widget.VerticalSeekBar
+                        android:id="@id/offset1SeekBar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="fill_parent"
+                        android:max="4095"
+                        android:progress="2047" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@id/ofs2Layout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="fill_parent"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@id/Offset2Lbl"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="2"
+                        android:textAppearance="?android:textAppearanceMedium"
+                        android:textColor="#ff0000ff" />
+
+                    <android.widget.VerticalSeekBar
+                        android:id="@id/offset2SeekBar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="fill_parent"
+                        android:max="4095"
+                        android:progress="2047" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

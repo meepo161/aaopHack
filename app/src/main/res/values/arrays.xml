@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="tbList">
+        <item>1 KHz</item>
+        <item>2 KHz</item>
+        <item>5 KHz</item>
+        <item>10 KHz</item>
+        <item>20 KHz</item>
+        <item>50 KHz</item>
+        <item>100 KHz</item>
+        <item>200 KHz</item>
+        <item>500 KHz</item>
+        <item>1 MHz</item>
+        <item>2 MHz</item>
+        <item>5 MHz</item>
+        <item>10 MHz</item>
+        <item>20 MHz</item>
+        <item>50 MHz</item>
+        <item>100 MHz</item>
+    </string-array>
+    <string-array name="lenList">
+        <item>1K p</item>
+        <item>10K p</item>
+        <item>100K p</item>
+    </string-array>
+    <string-array name="rangeList">
+        <item>10 mV/div</item>
+        <item>20 mV/div</item>
+        <item>50 mV/div</item>
+        <item>100 mV/div</item>
+        <item>200 mV/div</item>
+        <item>500 mV/div</item>
+        <item>1 V/div</item>
+        <item>2 V/div</item>
+        <item>5 V/div</item>
+        <item>10 V/div</item>
+    </string-array>
+    <string-array name="cplList">
+        <item>DC</item>
+        <item>AC</item>
+        <item>Gnd</item>
+        <item>50 Ω</item>
+        <item>Off</item>
+    </string-array>
+    <string-array name="trglogList">
+        <item>T↑</item>
+        <item>T↓</item>
+    </string-array>
+    <string-array name="probeList">
+        <item>1:1</item>
+        <item>1:10</item>
+        <item>1:100</item>
+    </string-array>
+    <string-array name="runmodeList">
+        <item>Auto</item>
+        <item>Normal</item>
+        <item>Single</item>
+    </string-array>
+    <string-array name="trgsrcList">
+        <item>1</item>
+        <item>2</item>
+        <item>Ext</item>
+    </string-array>
+    <string-array name="generatorList">
+        <item>____</item>
+        <item>_┌┐_</item>
+    </string-array>
+    <string-array name="prefixList">
+        <item>p</item>
+        <item>n</item>
+        <item>µ</item>
+        <item>m</item>
+        <item></item>
+        <item>K</item>
+        <item>M</item>
+    </string-array>
+</resources>

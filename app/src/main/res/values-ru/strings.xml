@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="aktakom_uri">http://www.aktakom.ru</string>
+    <string name="aktakom_urihtml">&lt;a href=http://www.aktakom.ru>www.aktakom.ru&lt;/a></string>
+    <string name="app_name">AAOP</string>
+    <string name="app_longname">AKTAKOM Oscilloscope Pro</string>
+    <string name="apphelp_urihtml">&lt;a href=http://www.aktakom.com/support/software/android/help/aopa>See detail help on application&lt;/a></string>
+    <string name="version">Версия</string>
+    <string name="demomode">Демо-режим</string>
+    <string name="err_nodatafile">Ошибка. Нет сохранённых файлов данных.</string>
+    <string name="err_openfilefail">Ошибка при открытии файла данных.</string>
+    <string name="nomemorycard">Нет карты памяти</string>
+    <string name="selectfile">Выберите файл</string>
+    <string name="about">О программе…</string>
+    <string name="initconnect">Идёт поиск…</string>
+    <string name="control">Управление</string>
+    <string name="measure">Измерения</string>
+    <string name="stop">Стоп</string>
+    <string name="run">Пуск</string>
+</resources>
