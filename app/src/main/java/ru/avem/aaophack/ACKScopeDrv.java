@@ -7,55 +7,24 @@ import ru.avem.aaophack.Utils.TANetInterface;
 
 import java.util.concurrent.TimeUnit;
 
+import static ru.avem.aaophack.Constants.ACKScopeDrv.*;
+import static ru.avem.aaophack.Utils.limited;
 import static ru.avem.aaophack.Utils.sleep;
+import static ru.avem.aaophack.Utils.uByte;
 
 public class ACKScopeDrv {
-    public static final int ANY_EDGE = 2;
-    public static final int CPL_50_OHM = 3;
-    public static final int CPL_AC = 1;
-    public static final int CPL_DC = 0;
-    public static final int CPL_GND = 2;
-    public static final boolean D = false;
-    public static final int LEADING_EDGE = 0;
-    public static final int MAX_DACCODE = 4095;
-    private static final int MIN_POSTTRG_LENGTH = 2;
-    private static final int NEED_RESET_OFFS = 2;
-    private static final int NEED_RESET_RANGE = 1;
-    private static final int NEED_RESET_TIME = 8;
-    private static final int NEED_RESET_TRG = 4;
-    public static final byte RSTATUS_POSTTRIGGER = 2;
-    public static final byte RSTATUS_READDATA = 3;
-    public static final byte RSTATUS_ROLL = 4;
-    public static final byte RSTATUS_UNKNOWN = 0;
-    public static final byte RSTATUS_WAITTRIGGER = 1;
-    public static final int SRC_EXTERNAL = 1;
-    public static final int SRC_INTERNAL = 0;
-    public static final byte STATUS_CARRY_WRITEADDR = 32;
-    public static final byte STATUS_COUNTER_DONE = 1;
-    public static final byte STATUS_DELAY_END = 4;
-    public static final byte STATUS_POSTTRIGGER = 8;
-    public static final byte STATUS_REGISTRATION = 2;
-    public static final byte STATUS_ROLL_MODE = 16;
-    public static final int TRAILING_EDGE = 1;
-    public static final int TRIGGER_AUTO = 0;
-    public static final int TRIGGER_NORMAL = 1;
-    public static final int TRIGGER_SCROLL = 3;
-    public static final int TRIGGER_SINGLE = 2;
     public static final double[] timebaseTab = new double[]{1.0E-8D, 2.0E-8D, 5.0E-8D, 1.0E-7D, 2.0E-7D, 5.0E-7D, 1.0E-6D, 2.0E-6D, 5.0E-6D, 1.0E-5D, 2.0E-5D, 5.0E-5D, 1.0E-4D, 2.0E-4D, 5.0E-4D, 0.001D};
     public static final double[] voltrangTab = new double[]{0.01D, 0.02D, 0.05D, 0.1D, 0.2D, 0.5D, 1.0D, 2.0D, 5.0D, 10.0D};
-    public static final byte CUBA_COMMAND2 = (byte) 2;
-    public static final byte CUBA_COMMAND1 = (byte) 1;
+
     private int clockSource;
     public int connectState;
     private int[] coupling = new int[2];
     private byte[] data1;
     private byte[] data2;
-    private boolean filterEnable;
     final byte[][] gainCode;
     private int generator;
     private boolean lockCtrl = false;
     private int memorySize;
-    private int minRange = 0;
     private int needReset = 0;
     private int[] offset = new int[2];
     public AULNetConnection pAULNetConnection;
@@ -65,8 +34,8 @@ public class ACKScopeDrv {
     private int[] range = new int[2];
     public int regStatus;
     private int sampleRate;
-    private boolean scroll;
-    private boolean start;
+    private boolean isScroll;
+    private boolean isStart;
     private int trgDelay;
     private int[] triggerLevel = new int[2];
     private int triggerLogic;
@@ -80,31 +49,30 @@ public class ACKScopeDrv {
         byte[] var10 = new byte[]{3, 3};
         byte[] var11 = new byte[]{2, 2};
         byte[] var6 = new byte[2];
-        this.gainCode = new byte[][]{var7, {-110, 50}, var8, {-125, 35}, {-126, 34}, var9, var10, var11, {1, 1}, var6};
-        this.pActivity = activity;
+        gainCode = new byte[][]{var7, {-110, 50}, var8, {-125, 35}, {-126, 34}, var9, var10, var11, {1, 1}, var6};
+        pActivity = activity;
 
         for (int channel = 0; channel < 2; ++channel) {
-            this.range[channel] = voltrangTab.length - 1;
-            this.coupling[channel] = 0;
-            this.offset[channel] = 2047;
-            this.triggerLevel[channel] = 2040;
-            this.probe[channel] = 1;
+            range[channel] = voltrangTab.length - 1;
+            coupling[channel] = 0;
+            offset[channel] = 2047;
+            triggerLevel[channel] = 2040;
+            probe[channel] = 1;
         }
 
-        this.triggerLogic = 0;
-        this.triggerMode = 0;
-        this.triggerSource = 0;
-        this.sampleRate = 4;
-        this.clockSource = 0;
-        this.filterEnable = false;
-        this.generator = 0;
-        this.scroll = false;
-        this.start = false;
-        this.postTrgLength = 512;
-        this.trgDelay = 512;
-        this.memorySize = 65536;
-        this.pAULNetConnection = new AULNetConnection(this.pActivity);
-        AULNetConnection aulNetConnection = this.pAULNetConnection;
+        triggerLogic = 0;
+        triggerMode = 0;
+        triggerSource = 0;
+        sampleRate = 4;
+        clockSource = 0;
+        generator = 0;
+        isScroll = false;
+        isStart = false;
+        postTrgLength = 512;
+        trgDelay = 512;
+        memorySize = 65536;
+        pAULNetConnection = new AULNetConnection(pActivity);
+        AULNetConnection aulNetConnection = pAULNetConnection;
         TANetInterface taNetInterface;
         if (tcpOn) {
             taNetInterface = TANetInterface.aniALAN;
@@ -113,143 +81,122 @@ public class ACKScopeDrv {
         }
 
         aulNetConnection.interfaceMode = taNetInterface;
-        this.pAULNetConnection.serverPort = serverPort;
-        this.pAULNetConnection.serverIP = serverIP;
-        this.connectState = 1;
-        this.InitConnection();
+        pAULNetConnection.serverPort = serverPort;
+        pAULNetConnection.serverIP = serverIP;
+        connectState = 1;
+        initConnection();
     }
 
     private int CheckRegistrateState(double var1, double var3) {
         byte var5 = 0;
-        if ((this.needReset & 1) != 0) {
-            this.WriteChannelControl(0);
+        if ((needReset & 1) != 0) {
+            writeChannelControl(0);
         }
 
-        if ((this.needReset & 256) != 0) {
-            this.WriteChannelControl(1);
+        if ((needReset & 256) != 0) {
+            writeChannelControl(1);
         }
 
-        if ((this.needReset & 2) != 0) {
-            this.setOffset(this.offset[0], 0);
+        if ((needReset & 2) != 0) {
+            setOffset(offset[0], 0);
         }
 
-        if ((this.needReset & 512) != 0) {
-            this.setOffset(this.offset[1], 1);
+        if ((needReset & 512) != 0) {
+            setOffset(offset[1], 1);
         }
 
-        if ((this.needReset & 4) != 0) {
-            this.setTriggerLevel(this.triggerLevel[0], 0);
+        if ((needReset & 4) != 0) {
+            setTriggerLevel(triggerLevel[0], 0);
         }
 
-        if ((this.needReset & 1024) != 0) {
-            this.setTriggerLevel(this.triggerLevel[1], 1);
+        if ((needReset & 1024) != 0) {
+            setTriggerLevel(triggerLevel[1], 1);
         }
 
-        if ((this.needReset & 8) != 0) {
-            this.setSampleRate(this.sampleRate);
+        if ((needReset & 8) != 0) {
+            setSampleRate(sampleRate);
         }
 
-        if ((this.needReset & 8) != 0 || (this.needReset & 4) != 0) {
-            this.WriteLowCmd();
+        if ((needReset & 8) != 0 || (needReset & 4) != 0) {
+            writeLowCmd();
         }
 
         if (0.001D * (double) System.currentTimeMillis() - var1 > var3) {
             var5 = 1;
         }
 
-        this.needReset = 0;
+        needReset = 0;
         return var5;
     }
 
     private boolean isLock() {
-        return this.lockCtrl;
-    }
-
-    public static double limited(double first, double value, double last) { // не стал прям разбираться
-        if (value < first) {
-            return first;
-        } else {
-            return value > last ? last : value;
-        }
-    }
-
-    public static int limited(int var0, int var1, int var2) { // не стал прям разбираться
-        if (var1 < var0) {
-            return var0;
-        } else {
-            return var1 > var2 ? var2 : var1;
-        }
+        return lockCtrl;
     }
 
     private void setNeedReset(int var1) {
         if (var1 != 0) {
-            this.needReset |= var1;
+            needReset |= var1;
         } else {
-            this.needReset = 0;
+            needReset = 0;
         }
     }
 
     private void setRegStatus(int regStatus) {
         if (this.regStatus != regStatus) {
             this.regStatus = regStatus;
-            ((ACKScopeDrv.IACKScopeListener) this.pActivity).onRegStatusChange(this);
+            ((ACKScopeDrv.IACKScopeListener) pActivity).onRegStatusChange(this);
         }
-
     }
 
-    public static int uByte(byte value) {
-        return value & 255;
-    }
-
-    int GetChannelsControl() {
-        this.pAULNetConnection.SelectUBA(CUBA_COMMAND2);
+    int getChannelsControl() {
+        pAULNetConnection.selectUBA(CUBA_COMMAND2);
         byte[] buffer = new byte[16];
-        this.pAULNetConnection.ReadRegister(4881, buffer);
+        pAULNetConnection.readRegister(4881, buffer);
         int leftUByte = uByte(buffer[0]);
         int rightUByte = uByte(buffer[1]);
-        this.pAULNetConnection.getClass();
-        this.pAULNetConnection.SelectUBA(CUBA_COMMAND1);
+        pAULNetConnection.getClass();
+        pAULNetConnection.selectUBA(CUBA_COMMAND1);
         return (leftUByte & 3 | (leftUByte & 4) << 1 | (leftUByte & 8) << 1 | (leftUByte & 16) << 3 | leftUByte & 32 | (leftUByte & 64) >> 4) ^ 252
                 | ((rightUByte & 3 | (rightUByte & 4) << 1 | (rightUByte & 8) << 1 | (rightUByte & 16) << 1 | (rightUByte & 32) << 1 | (rightUByte & 64) >> 4) ^ 252) << 8;
     }
 
-    public void InitConnection() {
-        if (!this.pAULNetConnection.InitConnection()) {
-            this.pAULNetConnection.Connect(true);
+    public void initConnection() {
+        if (!pAULNetConnection.initConnection()) {
+            pAULNetConnection.connect(true);
         }
 
     }
 
-    int ReadMemorySize() {
+    int readMemorySize() {
         byte[] buffer = new byte[16];
-        this.pAULNetConnection.ReadRegister(8, buffer);
+        pAULNetConnection.readRegister(8, buffer);
         switch (buffer[0] & 15) {
             case 0:
-                this.memorySize = 65536;
+                memorySize = 65536;
                 break;
             case 1:
-                this.memorySize = 131072;
+                memorySize = 131072;
                 break;
             case 2:
-                this.memorySize = 262144;
+                memorySize = 262144;
                 break;
             case 3:
-                this.memorySize = 524288;
+                memorySize = 524288;
                 break;
             case 4:
-                this.memorySize = 1048576;
+                memorySize = 1048576;
                 break;
             default:
-                this.memorySize = 65536;
+                memorySize = 65536;
         }
 
-        return this.memorySize;
+        return memorySize;
     }
 
-    int WriteChannelControl(int var1) {
-        byte var3 = this.gainCode[this.range[var1]][var1];
+    int writeChannelControl(int var1) {
+        byte var3 = gainCode[range[var1]][var1];
         int var2 = var3;
-        if (2 == this.coupling[var1]) {
+        if (2 == coupling[var1]) {
             byte var6;
             if (var1 != 0) {
                 var6 = 64;
@@ -261,16 +208,16 @@ public class ACKScopeDrv {
         }
 
         int var8 = var2;
-        if (1 == this.coupling[var1]) {
+        if (1 == coupling[var1]) {
             var8 = var2 | 8;
         }
 
         var2 = var8;
-        if (3 == this.coupling[var1]) {
+        if (3 == coupling[var1]) {
             var2 = var8 | 4;
         }
 
-        this.pAULNetConnection.SelectUBA(CUBA_COMMAND2);
+        pAULNetConnection.selectUBA(CUBA_COMMAND2);
         byte var5;
         if (var1 == 0) {
             var5 = 16;
@@ -278,30 +225,30 @@ public class ACKScopeDrv {
             var5 = 18;
         }
 
-        byte var7 = (byte) var5;
-        this.pAULNetConnection.WriteRegister(var7, (byte) (var2 ^ 236));
-        AULNetConnection var4 = this.pAULNetConnection;
-        this.pAULNetConnection.getClass();
-        return var4.SelectUBA(CUBA_COMMAND1);
+        byte var7 = var5;
+        pAULNetConnection.writeRegister(var7, (byte) (var2 ^ 236));
+        AULNetConnection var4 = pAULNetConnection;
+        pAULNetConnection.getClass();
+        return var4.selectUBA(CUBA_COMMAND1);
     }
 
     int WriteChannelsControl() {
         byte var4 = 0;
-        int channelsControlMask = this.GetChannelsControl();
+        int channelsControlMask = getChannelsControl();
         byte var3 = 0;
-        byte var2 = this.gainCode[this.range[0]][0];
+        byte var2 = gainCode[range[0]][0];
         int FF = var2;
-        if (2 == this.coupling[0]) {
+        if (2 == coupling[0]) {
             FF = var2 | 32;
         }
 
         int var8 = FF;
-        if (1 == this.coupling[0]) {
+        if (1 == coupling[0]) {
             var8 = FF | 8;
         }
 
         FF = var8;
-        if (3 == this.coupling[0]) {
+        if (3 == coupling[0]) {
             FF = var8 | 4;
         }
 
@@ -311,19 +258,19 @@ public class ACKScopeDrv {
             FF = 1;
         }
 
-        byte var9 = this.gainCode[this.range[1]][1];
+        byte var9 = gainCode[range[1]][1];
         var8 = var9;
-        if (2 == this.coupling[1]) {
+        if (2 == coupling[1]) {
             var8 = var9 | 64;
         }
 
         int var10 = var8;
-        if (1 == this.coupling[1]) {
+        if (1 == coupling[1]) {
             var10 = var8 | 8;
         }
 
         var8 = var10;
-        if (3 == this.coupling[1]) {
+        if (3 == coupling[1]) {
             var8 = var10 | 4;
         }
 
@@ -335,7 +282,7 @@ public class ACKScopeDrv {
 
         FF = var4;
         if (var8 != 0) {
-            this.pAULNetConnection.SelectUBA(CUBA_COMMAND2);
+            pAULNetConnection.selectUBA(CUBA_COMMAND2);
             byte[] var7 = new byte[16];
             short command = 0;
             switch (var8) {
@@ -353,18 +300,18 @@ public class ACKScopeDrv {
                     var7[1] = (byte) (var10 & 255);
             }
 
-            this.pAULNetConnection.WriteRegister(command, var7);
-            AULNetConnection var12 = this.pAULNetConnection;
-            this.pAULNetConnection.getClass();
-            FF = var12.SelectUBA(CUBA_COMMAND1);
+            pAULNetConnection.writeRegister(command, var7);
+            AULNetConnection var12 = pAULNetConnection;
+            pAULNetConnection.getClass();
+            FF = var12.selectUBA(CUBA_COMMAND1);
         }
 
         return FF;
     }
 
-    int WriteLowCmd() {
+    int writeLowCmd() {
         byte var3;
-        if (this.generator != 0) {
+        if (generator != 0) {
             var3 = 32;
         } else {
             var3 = 0;
@@ -372,22 +319,21 @@ public class ACKScopeDrv {
 
         byte var2 = (byte) var3;
         byte var1 = var2;
-        if (this.scroll) {
-            var1 = var2;
-            if (this.start) {
+        if (isScroll) {
+            if (isStart) {
                 var1 = (byte) (var2 | 16);
             }
         }
 
         var2 = var1;
-        if (this.triggerLogic == 1) {
+        if (triggerLogic == 1) {
             var2 = (byte) (var1 | 8);
         }
 
-        if (this.triggerMode == 0) {
+        if (triggerMode == 0) {
             var1 = (byte) (var2 | 6);
         } else {
-            switch (this.triggerSource) {
+            switch (triggerSource) {
                 case 1:
                     var1 = (byte) (var2 | 2);
                     break;
@@ -402,142 +348,89 @@ public class ACKScopeDrv {
         }
 
         var2 = var1;
-        if (this.start) {
-            var2 = var1;
-            if (!this.scroll) {
+        if (isStart) {
+            if (!isScroll) {
                 var2 = (byte) (var1 | 1);
             }
         }
 
         var1 = var2;
-        if (this.clockSource == 1) {
+        if (clockSource == 1) {
             var1 = (byte) (var2 | 64);
         }
 
-        return this.pAULNetConnection.WriteRegister(12, var1);
+        return pAULNetConnection.writeRegister(12, var1);
     }
 
     public void ackReset() {
-        this.setTrgDelay(this.trgDelay);
-        this.setPostTrgLength(this.postTrgLength);
-        this.setOffset(this.offset[0], 0);
-        this.setOffset(this.offset[1], 1);
-        this.setTriggerLevel(this.triggerLevel[0], 0);
-        this.setTriggerLevel(this.triggerLevel[1], 1);
-        this.WriteChannelsControl();
-        this.setSampleRate(this.sampleRate);
-        this.WriteLowCmd();
-    }
-
-    public int getClockSource() {
-        return this.clockSource;
-    }
-
-    public int getConnectState() {
-        return this.connectState;
-    }
-
-    public int getCoupling(int var1) {
-        return this.coupling[var1];
+        setTrgDelay(trgDelay);
+        setPostTrgLength(postTrgLength);
+        setOffset(offset[0], 0);
+        setOffset(offset[1], 1);
+        setTriggerLevel(triggerLevel[0], 0);
+        setTriggerLevel(triggerLevel[1], 1);
+        WriteChannelsControl();
+        setSampleRate(sampleRate);
+        writeLowCmd();
     }
 
     public byte[] getData1() {
-        return this.data1;
+        return data1;
     }
 
     public byte[] getData2() {
-        return this.data2;
-    }
-
-    public boolean getFilterEnable() {
-        return this.filterEnable;
-    }
-
-    public int getGenerator() {
-        return this.generator;
+        return data2;
     }
 
     public int getMemorySize() {
-        return this.memorySize;
-    }
-
-    public int getMinRange() {
-        return this.minRange;
-    }
-
-    public int getOffset(int var1) {
-        return this.offset[var1];
-    }
-
-    public int getPostTrgLength() {
-        return this.postTrgLength;
+        return memorySize;
     }
 
     public int getProbe(int var1) {
-        return this.probe[var1];
+        return probe[var1];
     }
 
     public int getRange(int var1) {
-        return this.range[var1];
+        return range[var1];
     }
 
     public int getReadAddress() {
         byte[] buffer = new byte[16];
-        this.pAULNetConnection.ReadRegister(459522, buffer);
-        return (uByte(buffer[0]) + (uByte(buffer[1]) << 8) + (uByte(buffer[2]) << 16)) % this.memorySize;
+        pAULNetConnection.readRegister(459522, buffer);
+        return (uByte(buffer[0]) + (uByte(buffer[1]) << 8) + (uByte(buffer[2]) << 16)) % memorySize;
     }
 
     public int getSampleRate() {
-        return this.sampleRate;
-    }
-
-    public boolean getScroll() {
-        return this.scroll;
-    }
-
-    public boolean getStart() {
-        return this.start;
+        return sampleRate;
     }
 
     public byte getStatus() {
         byte[] buffer = new byte[16];
-        this.pAULNetConnection.ReadRegister(4, buffer);
+        pAULNetConnection.readRegister(4, buffer);
         return buffer[0];
     }
 
-    public int getTrgDelay() {
-        return this.trgDelay;
-    }
-
-    public int getTriggerLevel(int var1) {
-        return this.triggerLevel[var1];
-    }
-
-    public int getTriggerLogic() {
-        return this.triggerLogic;
-    }
-
     public int getTriggerMode() {
-        return this.triggerMode;
+        return triggerMode;
     }
 
     public int getTriggerSource() {
-        return this.triggerSource;
+        return triggerSource;
     }
 
     public int getWriteAddress() {
         byte[] buffer = new byte[16];
-        this.pAULNetConnection.ReadRegister(393472, buffer);
-        return (uByte(buffer[0]) + (uByte(buffer[1]) << 8) + (uByte(buffer[2]) << 16)) % this.memorySize;
+        pAULNetConnection.readRegister(393472, buffer);
+        return (uByte(buffer[0]) + (uByte(buffer[1]) << 8) + (uByte(buffer[2]) << 16)) % memorySize;
     }
 
     public int readRAM(int var1, int var2) {
         if (var1 == 0) {
-            this.data1 = new byte[var2];
-            this.pAULNetConnection.ReadData(this.data1, (byte) -113);
+            data1 = new byte[var2];
+            pAULNetConnection.readData(data1, (byte) -113);
         } else {
-            this.data2 = new byte[var2];
-            this.pAULNetConnection.ReadData(this.data2, (byte) -97);
+            data2 = new byte[var2];
+            pAULNetConnection.readData(data2, (byte) -97);
         }
 
         return 0;
@@ -548,57 +441,40 @@ public class ACKScopeDrv {
         return 0;
     }
 
-    public void setClockSource(int var1) {
-        this.clockSource = limited(0, var1, 1);
-        if (this.isLock()) {
-            this.setNeedReset(4);
+    public void setCoupling(int value, int var2) {
+        value = limited(0, value, 3);
+        coupling[var2] = value;
+        if (isLock()) {
+            setNeedReset(1 << var2 * 8);
         } else {
-            this.WriteLowCmd();
+            writeChannelControl(var2);
         }
-    }
-
-    public void setConnectState(int var1) {
-        this.connectState = var1;
-    }
-
-    public void setCoupling(int var1, int var2) {
-        var1 = limited(0, var1, 3);
-        this.coupling[var2] = var1;
-        if (this.isLock()) {
-            this.setNeedReset(1 << var2 * 8);
-        } else {
-            this.WriteChannelControl(var2);
-        }
-    }
-
-    public void setFilterEnable(boolean var1) {
-        this.filterEnable = var1;
     }
 
     public void setGenerator(int var1) {
         var1 = limited(0, var1, 2);
-        this.generator = var1;
-        byte var3 = (byte) this.sampleRate;
+        generator = var1;
+        byte var3 = (byte) sampleRate;
         byte var2 = var3;
         if (2 == var1) {
             var2 = (byte) (var3 | 16);
         }
 
-        if (this.isLock()) {
-            this.setNeedReset(8);
+        if (isLock()) {
+            setNeedReset(8);
         } else {
-            this.pAULNetConnection.WriteRegister(11, var2);
-            this.WriteLowCmd();
+            pAULNetConnection.writeRegister(11, var2);
+            writeLowCmd();
         }
     }
 
     public void setOffset(int var1, int var2) {
         int var4 = limited(0, var1, 4095);
-        this.offset[var2] = var4;
-        if (this.isLock()) {
-            this.setNeedReset(2 << var2 * 8);
+        offset[var2] = var4;
+        if (isLock()) {
+            setNeedReset(2 << var2 * 8);
         } else {
-            this.pAULNetConnection.SelectUBA(CUBA_COMMAND2);
+            pAULNetConnection.selectUBA(CUBA_COMMAND2);
             byte var6;
             if (var2 == 0) {
                 var6 = 21;
@@ -608,7 +484,7 @@ public class ACKScopeDrv {
 
             byte var7 = (byte) var6;
             byte var3 = (byte) (4095 - var4 >> 8 & 255);
-            this.pAULNetConnection.WriteRegister(var7, var3);
+            pAULNetConnection.writeRegister(var7, var3);
             if (var2 == 0) {
                 var6 = 20;
             } else {
@@ -617,24 +493,24 @@ public class ACKScopeDrv {
 
             var7 = (byte) var6;
             var3 = (byte) (4095 - var4 & 255);
-            this.pAULNetConnection.WriteRegister(var7, var3);
-            AULNetConnection var5 = this.pAULNetConnection;
-            this.pAULNetConnection.getClass();
-            var5.SelectUBA(CUBA_COMMAND1);
+            pAULNetConnection.writeRegister(var7, var3);
+            AULNetConnection var5 = pAULNetConnection;
+            pAULNetConnection.getClass();
+            var5.selectUBA(CUBA_COMMAND1);
         }
     }
 
     public void setPostTrgLength(int var1) {
-        var1 = limited(2, var1, this.memorySize);
-        this.postTrgLength = var1;
-        int var2 = this.memorySize - (var1 - 2);
+        var1 = limited(2, var1, memorySize);
+        postTrgLength = var1;
+        int var2 = memorySize - (var1 - 2);
         var1 = var2;
         if (var2 != 0) {
             var1 = var2 - 1;
         }
 
-        this.setReadAddress(var1);
-        this.getReadAddress();
+        setReadAddress(var1);
+        getReadAddress();
     }
 
     public void setProbe(int var1, int var2) {
@@ -643,16 +519,16 @@ public class ACKScopeDrv {
             var3 = 1;
         }
 
-        this.probe[var2] = var3;
+        probe[var2] = var3;
     }
 
     public void setRange(int var1, int var2) {
         var1 = limited(0, var1, voltrangTab.length - 1);
-        this.range[var2] = var1;
-        if (this.isLock()) {
-            this.setNeedReset(1 << var2 * 8);
+        range[var2] = var1;
+        if (isLock()) {
+            setNeedReset(1 << var2 * 8);
         } else {
-            this.WriteChannelControl(var2);
+            writeChannelControl(var2);
         }
     }
 
@@ -661,61 +537,61 @@ public class ACKScopeDrv {
         var2[2] = (byte) (var1 >> 16 & 255);
         var2[1] = (byte) (var1 >> 8 & 255);
         var2[0] = (byte) (var1 & 255);
-        return this.pAULNetConnection.WriteRegister(459522, var2);
+        return pAULNetConnection.writeRegister(459522, var2);
     }
 
     public void setSampleRate(int var1) {
         int var2 = limited(0, var1, timebaseTab.length - 1);
-        this.sampleRate = var2;
+        sampleRate = var2;
         var1 = var2;
-        if (2 == this.generator) {
+        if (2 == generator) {
             var1 = var2 | 16;
         }
 
-        if (this.isLock()) {
-            this.setNeedReset(8);
+        if (isLock()) {
+            setNeedReset(8);
         } else {
-            this.pAULNetConnection.WriteRegister(11, (byte) var1);
+            pAULNetConnection.writeRegister(11, (byte) var1);
         }
     }
 
     public void setScroll(boolean var1) {
-        this.scroll = var1;
-        if (this.isLock()) {
-            this.setNeedReset(4);
+        isScroll = var1;
+        if (isLock()) {
+            setNeedReset(4);
         } else {
-            this.WriteLowCmd();
+            writeLowCmd();
         }
     }
 
     public void setStart(boolean var1) {
-        this.start = var1;
-        if (this.isLock()) {
-            this.setNeedReset(4);
+        isStart = var1;
+        if (isLock()) {
+            setNeedReset(4);
         } else {
-            this.WriteLowCmd();
+            writeLowCmd();
         }
     }
 
     public void setTrgDelay(int var1) {
-        var1 = limited(0, var1, this.memorySize);
-        this.trgDelay = var1;
-        int var2 = this.memorySize - var1;
+        var1 = limited(0, var1, memorySize);
+        trgDelay = var1;
+        int var2 = memorySize - var1;
         var1 = var2;
         if (var2 != 0) {
             var1 = var2 - 1;
         }
 
-        this.setWriteAddress(var1);
+        setWriteAddress(var1);
     }
 
     public void setTriggerLevel(int var1, int var2) {
         int var3 = limited(0, var1, 4095);
-        this.triggerLevel[var2] = var3;
-        if (this.isLock()) {
-            this.setNeedReset(4 << var2 * 8);
+        triggerLevel[var2] = var3;
+        if (isLock()) {
+            setNeedReset(4 << var2 * 8);
         } else {
-            this.pAULNetConnection.SelectUBA(CUBA_COMMAND2);
+            pAULNetConnection.selectUBA(CUBA_COMMAND2);
             short var5;
             if (var2 == 0) {
                 var5 = 5655;
@@ -726,37 +602,37 @@ public class ACKScopeDrv {
             byte[] var4 = new byte[16];
             var4[0] = (byte) (var3 >> 8 & 255);
             var4[1] = (byte) (var3 & 255);
-            this.pAULNetConnection.WriteRegister(var5, var4);
-            AULNetConnection var6 = this.pAULNetConnection;
-            this.pAULNetConnection.getClass();
-            var6.SelectUBA(CUBA_COMMAND1);
+            pAULNetConnection.writeRegister(var5, var4);
+            AULNetConnection var6 = pAULNetConnection;
+            pAULNetConnection.getClass();
+            var6.selectUBA(CUBA_COMMAND1);
         }
     }
 
     public void setTriggerLogic(int var1) {
-        this.triggerLogic = limited(0, var1, 2);
-        if (this.isLock()) {
-            this.setNeedReset(4);
+        triggerLogic = limited(0, var1, 2);
+        if (isLock()) {
+            setNeedReset(4);
         } else {
-            this.WriteLowCmd();
+            writeLowCmd();
         }
     }
 
     public void setTriggerMode(int var1) {
-        this.triggerMode = limited(0, var1, 3);
-        if (this.isLock()) {
-            this.setNeedReset(4);
+        triggerMode = limited(0, var1, 3);
+        if (isLock()) {
+            setNeedReset(4);
         } else {
-            this.WriteLowCmd();
+            writeLowCmd();
         }
     }
 
     public void setTriggerSource(int var1) {
-        this.triggerSource = limited(0, var1, 1);
-        if (this.isLock()) {
-            this.setNeedReset(4);
+        triggerSource = limited(0, var1, 1);
+        if (isLock()) {
+            setNeedReset(4);
         } else {
-            this.WriteLowCmd();
+            writeLowCmd();
         }
     }
 
@@ -765,15 +641,15 @@ public class ACKScopeDrv {
         var2[2] = (byte) (var1 >> 16 & 255);
         var2[1] = (byte) (var1 >> 8 & 255);
         var2[0] = (byte) (var1 & 255);
-        return this.pAULNetConnection.WriteRegister(393472, var2);
+        return pAULNetConnection.writeRegister(393472, var2);
     }
 
     public void startNormal() {
-        this.start = true;
-        int var1 = this.triggerMode;
-        this.triggerMode = 1;
-        this.WriteLowCmd();
-        this.triggerMode = var1;
+        isStart = true;
+        int var1 = triggerMode;
+        triggerMode = 1;
+        writeLowCmd();
+        triggerMode = var1;
     }
 
     public interface IACKScopeListener {
@@ -783,19 +659,15 @@ public class ACKScopeDrv {
     }
 
     private class ReadWaveformTask extends AsyncTask<ACKScopeDrv, Void, Integer> {
-        private ReadWaveformTask() {
-        }
-
         protected Integer doInBackground(ACKScopeDrv... ackScopeDrvs) {
             int lengthDelay = ackScopeDrvs[0].postTrgLength + ackScopeDrvs[0].trgDelay;
-            ackScopeDrvs[0].start = false;
+            ackScopeDrvs[0].isStart = false;
             ackScopeDrvs[0].ackReset();
-            boolean var13 = true;
             ackScopeDrvs[0].startNormal();
             ackScopeDrvs[0].setRegStatus(1);
             double currentTimeMillis = (double) System.currentTimeMillis();
 
-            byte kakaytoMaska;
+            byte cuba1;
             do {
                 try {
                     TimeUnit.MILLISECONDS.sleep(50L);
@@ -806,81 +678,63 @@ public class ACKScopeDrv {
                 ackScopeDrvs[0].lockCtrl = true;
                 byte status = ackScopeDrvs[0].getStatus();
                 ackScopeDrvs[0].lockCtrl = false;
-                kakaytoMaska = (byte) (status & 14);
-            } while (ACKScopeDrv.this.CheckRegistrateState(0.001D * currentTimeMillis, 0.2D) == 0 && (kakaytoMaska & 2) == 0 && kakaytoMaska != 0);
+                cuba1 = (byte) (status & 14);
+            } while (CheckRegistrateState(0.001D * currentTimeMillis, 0.2D) == 0 && (cuba1 & 2) == 0 && cuba1 != 0);
 
             double _currentTimeMicros = 0.001D * (double) System.currentTimeMillis();
             double sampleRate = ACKScopeDrv.timebaseTab[ackScopeDrvs[0].sampleRate];
             double _yRate = (double) (ackScopeDrvs[0].trgDelay + 100) * sampleRate;
             double _newYRate = _yRate;
-            boolean boolHZ = var13;
-            byte newCuba = kakaytoMaska;
+            boolean isTriggerModeOn = true;
+            byte cuba2 = cuba1;
             currentTimeMillis = _currentTimeMicros;
             if (_yRate < 0.2D) {
                 _newYRate = 0.2D;
                 currentTimeMillis = _currentTimeMicros;
-                newCuba = kakaytoMaska;
-                boolHZ = var13;
             }
 
-            byte cuba;
+            byte cuba3;
             do {
                 sleep(50L);
-                cuba = ACKScopeDrv.this.pAULNetConnection.cUBA;
-                ACKScopeDrv.this.pAULNetConnection.getClass();
-                if (cuba != 1) {
-                    cuba = newCuba;
+                cuba3 = pAULNetConnection.cUBA;
+                pAULNetConnection.getClass();
+                if (cuba3 != 1) {
+                    cuba3 = cuba2;
                 } else {
                     ackScopeDrvs[0].lockCtrl = true;
-                    cuba = ackScopeDrvs[0].getStatus();
+                    cuba3 = ackScopeDrvs[0].getStatus();
                     ackScopeDrvs[0].lockCtrl = false;
-                    kakaytoMaska = (byte) (cuba & 14);
-                    if ((kakaytoMaska & 8) != 0) {
+                    cuba1 = (byte) (cuba3 & 14);
+                    if ((cuba1 & 8) != 0) {
                         ackScopeDrvs[0].setRegStatus(2);
                     }
 
-                    boolean var23 = boolHZ;
+                    boolean localTriggerMode = isTriggerModeOn;
                     _currentTimeMicros = currentTimeMillis;
-                    if (boolHZ) {
-                        var23 = boolHZ;
-                        _currentTimeMicros = currentTimeMillis;
-                        if (ackScopeDrvs[0].triggerMode == 0) {
-                            var23 = boolHZ;
-                            _currentTimeMicros = currentTimeMillis;
-                            if ((kakaytoMaska & 4) != 0) {
-                                var23 = boolHZ;
-                                _currentTimeMicros = currentTimeMillis;
-                                if ((kakaytoMaska & 8) == 0) {
-                                    var23 = boolHZ;
-                                    _currentTimeMicros = currentTimeMillis;
-                                    if (ACKScopeDrv.this.CheckRegistrateState(currentTimeMillis, _newYRate) != 0) {
-                                        ACKScopeDrv ackScopeDrv = ackScopeDrvs[0];
-                                        var23 = false;
-                                        ackScopeDrv.setTriggerMode(0);
-                                        _currentTimeMicros = 0.001D * (double) System.currentTimeMillis();
-                                    }
-                                }
-                            }
-                        }
+                    if (isTriggerModeOn
+                            && (ackScopeDrvs[0].triggerMode == 0)
+                            && ((cuba1 & 4) != 0)
+                            && ((cuba1 & 8) == 0)
+                            && (CheckRegistrateState(currentTimeMillis, _newYRate) != 0)) {
+                        ACKScopeDrv ackScopeDrv = ackScopeDrvs[0];
+                        localTriggerMode = false;
+                        ackScopeDrv.setTriggerMode(0);
+                        _currentTimeMicros = 0.001D * (double) System.currentTimeMillis();
                     }
 
-                    boolHZ = var23;
-                    cuba = kakaytoMaska;
+                    isTriggerModeOn = localTriggerMode;
+                    cuba3 = cuba1;
                     currentTimeMillis = _currentTimeMicros;
-                    if (!var23) {
-                        boolHZ = var23;
-                        cuba = kakaytoMaska;
-                        currentTimeMillis = _currentTimeMicros;
-                        if (ACKScopeDrv.this.CheckRegistrateState(_currentTimeMicros, (double) (lengthDelay * 2) * sampleRate) != 0) {
-                            cuba = 0;
-                            boolHZ = var23;
+                    if (!localTriggerMode) {
+                        if (CheckRegistrateState(_currentTimeMicros, (double) (lengthDelay * 2) * sampleRate) != 0) {
+                            cuba3 = 0;
                             currentTimeMillis = _currentTimeMicros;
                         }
                     }
                 }
 
-                newCuba = cuba;
-            } while ((cuba & 6) != 0);
+                cuba2 = cuba3;
+            } while ((cuba3 & 6) != 0);
 
             ackScopeDrvs[0].setStart(false);
             ackScopeDrvs[0].lockCtrl = true;
@@ -892,20 +746,15 @@ public class ACKScopeDrv {
             }
 
             ackScopeDrvs[0].setReadAddress(startAddress);
-            if (ackScopeDrvs[0].getReadAddress() != startAddress) {
-            }
+            ackScopeDrvs[0].getReadAddress();
 
             ackScopeDrvs[0].readRAM(0, lengthDelay);
             ackScopeDrvs[0].setReadAddress(startAddress);
             startAddress = ackScopeDrvs[0].readRAM(1, lengthDelay);
             ackScopeDrvs[0].lockCtrl = false;
             ackScopeDrvs[0].setRegStatus(0);
-            ((ACKScopeDrv.IACKScopeListener) ACKScopeDrv.this.pActivity).onDataReady(ackScopeDrvs[0]);
+            ((ACKScopeDrv.IACKScopeListener) pActivity).onDataReady(ackScopeDrvs[0]);
             return startAddress;
-        }
-
-        protected void onPostExecute(Integer integer) {
         }
     }
 }
-

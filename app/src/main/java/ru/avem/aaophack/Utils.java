@@ -1,7 +1,6 @@
 package ru.avem.aaophack;
 
 class Utils {
-
     static void sleep(long time) {
         try {
             Thread.sleep(time);
@@ -55,5 +54,26 @@ class Utils {
         aniABT,
         aniAUN,
         aniAUN2
+    }
+
+
+    public static double limited(double min, double value, double max) {
+        if (value < min) {
+            return min;
+        } else {
+            return Math.min(value, max);
+        }
+    }
+
+    public static int limited(int min, int value, int max) {
+        if (value < min) {
+            return min;
+        } else {
+            return Math.min(value, max);
+        }
+    }
+
+    public static int uByte(byte value) {
+        return value & 255;
     }
 }

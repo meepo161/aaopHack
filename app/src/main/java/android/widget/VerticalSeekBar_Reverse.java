@@ -25,18 +25,15 @@ public class VerticalSeekBar_Reverse extends SeekBar {
 
     protected void onDraw(Canvas var1) {
         var1.rotate(90.0F);
-        var1.translate(0.0F, (float)(-this.getWidth()));
+        var1.translate(0.0F, (float)(-getWidth()));
         super.onDraw(var1);
     }
 
     protected void onMeasure(int var1, int var2) {
-        synchronized(this){}
-
         try {
             super.onMeasure(var2, var1);
-            this.setMeasuredDimension(this.getMeasuredHeight(), this.getMeasuredWidth());
+            setMeasuredDimension(getMeasuredHeight(), getMeasuredWidth());
         } finally {
-            ;
         }
 
     }
@@ -46,15 +43,15 @@ public class VerticalSeekBar_Reverse extends SeekBar {
     }
 
     public boolean onTouchEvent(MotionEvent var1) {
-        if (!this.isEnabled()) {
+        if (!isEnabled()) {
             return false;
         } else {
             switch(var1.getAction()) {
                 case 0:
                 case 1:
                 case 2:
-                    this.setProgress(100 - (this.getMax() - (int)((float)this.getMax() * var1.getY() / (float)this.getHeight())));
-                    this.onSizeChanged(this.getWidth(), this.getHeight(), 0, 0);
+                    setProgress(100 - (getMax() - (int)((float)getMax() * var1.getY() / (float)getHeight())));
+                    onSizeChanged(getWidth(), getHeight(), 0, 0);
                 default:
                     return true;
             }

@@ -1,44 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="tbList">
-        <item>1 кГц</item>
-        <item>2 кГц</item>
-        <item>5 кГц</item>
-        <item>10 кГц</item>
-        <item>20 кГц</item>
-        <item>50 кГц</item>
-        <item>100 кГц</item>
-        <item>200 кГц</item>
-        <item>500 кГц</item>
-        <item>1 МГц</item>
-        <item>2 МГц</item>
-        <item>5 МГц</item>
-        <item>10 МГц</item>
-        <item>20 МГц</item>
-        <item>50 МГц</item>
-        <item>100 МГц</item>
+        <item>1 кГц           </item>
+        <item>2 кГц           </item>
+        <item>5 кГц           </item>
+        <item>10 кГц       </item>
+        <item>20 кГц       </item>
+        <item>50 кГц       </item>
+        <item>100 кГц      </item>
+        <item>200 кГц      </item>
+        <item>500 кГц      </item>
+        <item>1 МГц           </item>
+        <item>2 МГц           </item>
+        <item>5 МГц           </item>
+        <item>10 МГц           </item>
+        <item>20 МГц           </item>
+        <item>50 МГц           </item>
+        <item>100 МГц   </item>
     </string-array>
     <string-array name="lenList">
-        <item>1K т</item>
-        <item>10K т</item>
-        <item>100K т</item>
+        <item>1K т   </item>
+        <item>10K т   </item>
+        <item>100K т   </item>
     </string-array>
     <string-array name="rangeList">
-        <item>10 мВ/дел</item>
-        <item>20 мВ/дел</item>
-        <item>50 мВ/дел</item>
-        <item>100 мВ/дел</item>
-        <item>200 мВ/дел</item>
-        <item>500 мВ/дел</item>
-        <item>1 В/дел</item>
-        <item>2 В/дел</item>
-        <item>5 В/дел</item>
-        <item>10 В/дел</item>
+        <item>10 мВ/дел              </item>
+        <item>20 мВ/дел              </item>
+        <item>50 мВ/дел              </item>
+        <item>100 мВ/дел             </item>
+        <item>200 мВ/дел             </item>
+        <item>500 мВ/дел             </item>
+        <item>1 В/дел              </item>
+        <item>2 В/дел              </item>
+        <item>5 В/дел              </item>
+        <item>10 В/дел                </item>
     </string-array>
     <string-array name="cplList">
-        <item>DC</item>
-        <item>AC</item>
-        <item>Gnd</item>
+        <item>DC      </item>
+        <item>AC      </item>
+        <item>Gnd      </item>
         <item>50 Ω</item>
         <item>Выкл</item>
     </string-array>

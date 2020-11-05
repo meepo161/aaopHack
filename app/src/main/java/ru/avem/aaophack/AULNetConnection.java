@@ -16,6 +16,7 @@ import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.util.Log;
 import android.widget.Toast;
 
 import java.io.DataInputStream;
@@ -31,29 +32,16 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
-import static ru.avem.aaophack.ACKScopeDrv.CUBA_COMMAND1;
-import static ru.avem.aaophack.ACKScopeDrv.CUBA_COMMAND2;
+import static java.sql.DriverManager.println;
+import static ru.avem.aaophack.Constants.ACKScopeDrv.CUBA_COMMAND1;
+import static ru.avem.aaophack.Constants.ACKScopeDrv.CUBA_COMMAND2;
+import static ru.avem.aaophack.Constants.AULNetConnection.BT_ENABLE_REQUEST;
 import static ru.avem.aaophack.Utils.toHexString;
 
 public class AULNetConnection {
     private static final String ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION";
-    public static final int AULNCMDEP_CLOSE = 6;
-    public static final int AULNCMDEP_GETDEVCOUNT = 8;
-    public static final int AULNCMDEP_GETUSBNAME = 9;
-    public static final int AULNCMDEP_ISOPEN = 7;
-    public static final int AULNCMDEP_OPEN = 5;
-    public static final int AULNCMDEP_READDATA = 2;
-    public static final int AULNCMDEP_READSTATUS = 0;
-    public static final int AULNCMDEP_REQACCESS = 4;
-    public static final int AULNCMDEP_SENDCOMMAND = 1;
-    public static final int AULNCMDEP_WRITEDATA = 3;
-    public static final int BT_ENABLE_REQUEST = 101;
-    public static final boolean D = false;
-    private static final String TAG = "AULNet";
     public final byte AULN_DEFUBA;
     private Set<BluetoothDevice> BTDevList;
     final BroadcastReceiver bReceiver;
@@ -62,7 +50,6 @@ public class AULNetConnection {
     public byte cUBA;
     public UsbDeviceConnection connection;
     private boolean demoMode = true;
-    private int devCnt = 0;
     private boolean devInited = false;
     public UsbDevice device;
     public String devname;
@@ -96,169 +83,114 @@ public class AULNetConnection {
     //----------------------------------------------------------------------------------------------
 
     public AULNetConnection(Activity activity) {
-        this.interfaceMode = Utils.TANetInterface.aniAUN;
-        this.tcpSocket = null;
-        this.btSocket = null;
-        this.btStarted = false;
-        this.connection = null;
-        this.supportedDevs = new String[]{"ACK-3102", "ACK-3002", "ACK-3712"};
-        this.AULN_DEFUBA = 1;
-        this.bReceiver = new BroadcastReceiver() {
-            public void onReceive(Context var1, Intent var2) {
-                String var4 = var2.getAction();
+        interfaceMode = Utils.TANetInterface.aniAUN;
+        tcpSocket = null;
+        btSocket = null;
+        btStarted = false;
+        connection = null;
+        supportedDevs = new String[]{"ACK-3102", "ACK-3002", "ACK-3712"};
+        AULN_DEFUBA = 1;
+        bReceiver = new BroadcastReceiver() {
+            public void onReceive(Context var1, Intent intent) {
+                String bluetoothIntent = intent.getAction();
                 BluetoothDevice bluetoothDevice;
-                if ("android.bluetooth.device.action.FOUND".equals(var4)) {
-                    bluetoothDevice = (BluetoothDevice) var2.getParcelableExtra("android.bluetooth.device.extra.DEVICE");
-                    AULNetConnection.this.BTDevList.add(bluetoothDevice);
+                if ("android.bluetooth.device.action.FOUND".equals(bluetoothIntent)) {
+                    bluetoothDevice = (BluetoothDevice) intent.getParcelableExtra("android.bluetooth.device.extra.DEVICE");
+                    BTDevList.add(bluetoothDevice);
                 }
 
-                if ("android.bluetooth.adapter.action.DISCOVERY_FINISHED".equals(var4)) {
-                    AULNetConnection.this.pActivity.unregisterReceiver(AULNetConnection.this.bReceiver);
-                    AULNetConnection.this.mBluetoothAdapter.cancelDiscovery();
+                if ("android.bluetooth.adapter.action.DISCOVERY_FINISHED".equals(bluetoothIntent)) {
+                    pActivity.unregisterReceiver(bReceiver);
+                    mBluetoothAdapter.cancelDiscovery();
                     boolean var3 = true;
-                    Iterator var5 = AULNetConnection.this.BTDevList.iterator();
 
-                    while (var5.hasNext()) {
-                        bluetoothDevice = (BluetoothDevice) var5.next();
-                        if (AULNetConnection.this.isValidDevice(bluetoothDevice.getName())) {
-                            AULNetConnection.this.new openBtSocketTask().execute(bluetoothDevice);
+                    for (BluetoothDevice value : BTDevList) {
+                        bluetoothDevice = value;
+                        if (isValidDevice(bluetoothDevice.getName())) {
+                            new OpenBtSocketTask().execute(bluetoothDevice);
                             var3 = false;
                             break;
                         }
                     }
 
                     if (var3) {
-                        AULNetConnection.this.Connect(true);
+                        connect(true);
                     }
                 }
 
             }
         };
-        this.mUsbReceiver = new BroadcastReceiver() {
+        mUsbReceiver = new BroadcastReceiver() {
             public void onReceive(Context context, Intent intent) {
-                boolean var3 = true;
+                boolean isDeviceExists = true;
+
+                UsbDevice usbDevice = (UsbDevice) intent.getParcelableExtra("device");
                 if ("com.android.example.USB_PERMISSION".equals(intent.getAction())) {
-                    synchronized (this) {
-                    }
-
-                    Throwable throwable;
-                    label307:
-                    {
-                        label313:
-                        {
-                            UsbDevice var34;
-                            label314:
-                            {
-                                AULNetConnection var36;
-                                try {
-                                    var34 = (UsbDevice) intent.getParcelableExtra("device");
-                                    if (!intent.getBooleanExtra("permission", false)) {
-                                        break label314;
-                                    }
-
-                                    var36 = AULNetConnection.this;
-                                } catch (Throwable var33) {
-                                    throwable = var33;
-                                    break label307;
-                                }
-
-                                if (var34 != null) {
-                                    var3 = false;
-                                }
-
-                                try {
-                                    var36.Connect(var3);
-                                    break label313;
-                                } catch (Throwable var32) {
-                                    throwable = var32;
-                                    break label307;
-                                }
-                            }
-
-                            try {
-                                Toast.makeText(AULNetConnection.this.pActivity.getApplicationContext(), "permission denied for device " + var34, Toast.LENGTH_LONG).show();
-                                AULNetConnection.this.Connect(true);
-                            } catch (Throwable var31) {
-                                throwable = var31;
-                                break label307;
-                            }
+                    if (intent.getBooleanExtra("permission", false)) {
+                        if (usbDevice != null) {
+                            isDeviceExists = false;
                         }
-
-                        label293:
-                        try {
-                            return;
-                        } catch (Throwable var30) {
-                            throwable = var30;
-                            break label293;
-                        }
+                        connect(isDeviceExists);
                     }
-
-                    while (true) {
-                        Throwable throwable1 = throwable;
-
-                        try {
-                            throw throwable1;
-                        } catch (Throwable var29) {
-                            throwable = var29;
-                            continue;
-                        }
-                    }
+                } else {
+                    Toast.makeText(pActivity.getApplicationContext(), "permission denied for device " + usbDevice, Toast.LENGTH_LONG).show();
+                    connect(true);
                 }
             }
         };
-        this.pActivity = activity;
+        pActivity = activity;
     }
 
-    private int requestTcp(int var1, byte[] var2, int var3) {
-        int var5 = -1;
+    private int requestTcp(int idEndPoint, byte[] buffer, int length) {
+        int idNotInitialized = -1;
         byte var6 = 0;
         byte var4 = 0;
-        boolean var8 = false;
-        AULNetConnection.transferData var10 = new AULNetConnection.transferData();
+        boolean isEndPointRead = false;
+        TransferData transferData = new TransferData();
         byte var21;
-        switch (var1) {
-            case 0:
+        switch (idEndPoint) {
+            case idEndPointRDST:
                 var21 = 5;
-                var8 = true;
+                isEndPointRead = true;
                 var4 = 8;
-                var10.hlp[0] = (byte) (var3 & 255);
-                var10.hlp[1] = (byte) (var3 >> 8 & 255);
-                var10.hlp[2] = (byte) (var3 >> 16 & 255);
-                var10.hlp[3] = (byte) (var3 >> 24 & 255);
+                transferData.hlp[0] = (byte) (length & 255);
+                transferData.hlp[1] = (byte) (length >> 8 & 255);
+                transferData.hlp[2] = (byte) (length >> 16 & 255);
+                transferData.hlp[3] = (byte) (length >> 24 & 255);
                 break;
-            case 1:
+            case idEndPointSNDCM:
                 var21 = 6;
                 var4 = 8;
-                var10.hlp[0] = (byte) (var3 & 255);
-                var10.hlp[1] = (byte) (var3 >> 8 & 255);
-                var10.hlp[2] = (byte) (var3 >> 16 & 255);
-                var10.hlp[3] = (byte) (var3 >> 24 & 255);
+                transferData.hlp[0] = (byte) (length & 255);
+                transferData.hlp[1] = (byte) (length >> 8 & 255);
+                transferData.hlp[2] = (byte) (length >> 16 & 255);
+                transferData.hlp[3] = (byte) (length >> 24 & 255);
                 break;
-            case 2:
+            case idEndPointRDDT:
                 var21 = 7;
-                var8 = true;
+                isEndPointRead = true;
                 var4 = 8;
-                var10.hlp[0] = (byte) (var3 & 255);
-                var10.hlp[1] = (byte) (var3 >> 8 & 255);
-                var10.hlp[2] = (byte) (var3 >> 16 & 255);
-                var10.hlp[3] = (byte) (var3 >> 24 & 255);
+                transferData.hlp[0] = (byte) (length & 255);
+                transferData.hlp[1] = (byte) (length >> 8 & 255);
+                transferData.hlp[2] = (byte) (length >> 16 & 255);
+                transferData.hlp[3] = (byte) (length >> 24 & 255);
                 break;
-            case 3:
+            case idEndPointWRDT:
                 var21 = 8;
                 var4 = 8;
-                var10.hlp[0] = (byte) (var3 & 255);
-                var10.hlp[1] = (byte) (var3 >> 8 & 255);
-                var10.hlp[2] = (byte) (var3 >> 16 & 255);
-                var10.hlp[3] = (byte) (var3 >> 24 & 255);
+                transferData.hlp[0] = (byte) (length & 255);
+                transferData.hlp[1] = (byte) (length >> 8 & 255);
+                transferData.hlp[2] = (byte) (length >> 16 & 255);
+                transferData.hlp[3] = (byte) (length >> 24 & 255);
                 break;
-            case 4:
+            case idEndPointPASSWORD:
                 var21 = 0;
                 break;
-            case 5:
+            case idEndPointUNLOCK:
                 var21 = 1;
                 var4 = 8;
                 break;
-            case 6:
+            case idEndPointCLOSE:
                 var21 = 2;
                 var4 = 4;
                 break;
@@ -267,8 +199,8 @@ public class AULNetConnection {
         }
 
         int var7 = var4;
-        if (!var8) {
-            var7 = var4 + var3;
+        if (!isEndPointRead) {
+            var7 = var4 + length;
         }
 
         byte[] var11 = new byte[28];
@@ -287,117 +219,62 @@ public class AULNetConnection {
         var11[25] = (byte) (var7 >> 8 & 255);
         var11[26] = (byte) (var7 >> 16 & 255);
         var11[27] = (byte) (var7 >> 24 & 255);
-        var10.newBuf(var11.length + var3 + var4);
-        System.arraycopy(var11, 0, var10.buf, 0, var11.length);
+        transferData.newBuf(var11.length + length + var4);
+        System.arraycopy(var11, 0, transferData.buf, 0, var11.length);
         if (var4 > 0) {
-            System.arraycopy(var10.hlp, 0, var10.buf, var11.length, var4);
+            System.arraycopy(transferData.hlp, 0, transferData.buf, var11.length, var4);
         }
 
-        if (!var8 && var3 > 0) {
-            System.arraycopy(var2, 0, var10.buf, var11.length + var4, var3);
+        if (!isEndPointRead && length > 0) {
+            System.arraycopy(buffer, 0, transferData.buf, var11.length + var4, length);
         }
 
-        var10.read = var8;
-        var10.size = var3;
-        var10.hlpsize = var4;
-        toHexString(var10.buf);
-        AULNetConnection.transferSocketTask var9 = new AULNetConnection.transferSocketTask();
-        var9.execute(new AULNetConnection.transferData[]{var10});
-        int var26 = var5;
-        int var25 = var5;
+        transferData.read = isEndPointRead;
+        transferData.size = length;
+        transferData.hlpsize = var4;
+        toHexString(transferData.buf);
+        TransferSocketTask socketTask = new TransferSocketTask();
+        socketTask.execute(transferData);
 
-        label69:
-        {
-            InterruptedException var28;
-            label68:
-            {
-                ExecutionException var27;
-                label67:
-                {
-                    TimeoutException var10000;
-                    label79:
-                    {
-                        boolean var10001;
-                        try {
-                            var1 = (Integer) var9.get(1500L, TimeUnit.MILLISECONDS);
-                        } catch (InterruptedException var18) {
-                            var28 = var18;
-                            var10001 = false;
-                            break label68;
-                        } catch (ExecutionException var19) {
-                            var27 = var19;
-                            var10001 = false;
-                            break label67;
-                        } catch (TimeoutException var20) {
-                            var10000 = var20;
-                            var10001 = false;
-                            break label79;
-                        }
-
-                        if (var8) {
-                            var26 = var1;
-                            var25 = var1;
-                            var5 = var1;
-
-                            System.arraycopy(var10.buf, var11.length, var2, 0, var3);
-                        }
-
-                        var26 = var1;
-                        var25 = var1;
-                        var5 = var1;
-
-                        var9.cancel(true);
-                        break label69;
-                    }
-
-                    TimeoutException var22 = var10000;
-                    var22.printStackTrace();
-                    var1 = var5;
-                    break label69;
-                }
-
-                ExecutionException var23 = var27;
-                var23.printStackTrace();
-                var1 = var25;
-                break label69;
+        try {
+            idEndPoint = (Integer) socketTask.get(1500L, TimeUnit.MILLISECONDS);
+            if (isEndPointRead) {
+                System.arraycopy(transferData.buf, var11.length, buffer, 0, length);
             }
-
-            InterruptedException var24 = var28;
-            var24.printStackTrace();
-            var1 = var26;
+        } catch (Exception e) {
+            e.printStackTrace();
+            idEndPoint = idNotInitialized;
         }
 
-        var9.cancel(true);
-        return var1;
+        socketTask.cancel(true);
+        return idEndPoint;
     }
 
     int AULNetTransfer(int idEndPoint, byte[] buffer, int length) {
         int writtenLength = 0;
-        if (this.interfaceMode != Utils.TANetInterface.aniALAN && this.interfaceMode != Utils.TANetInterface.aniABT) {
-            if (this.connection != null) {
+        if (interfaceMode != Utils.TANetInterface.aniALAN && interfaceMode != Utils.TANetInterface.aniABT) {
+            if (connection != null) {
                 UsbEndpoint usbEndpoint;
                 switch (idEndPoint) {
                     case idEndPointRDST:
-                        usbEndpoint = this.epRDST;
+                        usbEndpoint = epRDST;
                         break;
                     case idEndPointSNDCM:
-                        usbEndpoint = this.epSNDCMD;
+                        usbEndpoint = epSNDCMD;
                         break;
                     case idEndPointRDDT:
-                        usbEndpoint = this.epRDDT;
+                        usbEndpoint = epRDDT;
                         break;
                     case idEndPointWRDT:
-                        usbEndpoint = this.epWRDT;
+                        usbEndpoint = epWRDT;
                         break;
                     default:
                         return length;
                 }
 
-                if (length <= 16 && idEndPoint == 3) {
-                    //ПОЧЕМУ ПУСТО?
-                }
-
-                int writtenLengthBulk = this.connection.bulkTransfer(usbEndpoint, buffer, length, 0);
+                int writtenLengthBulk = connection.bulkTransfer(usbEndpoint, buffer, length, 0);
+                Log.d("AYE1337", "numBytesWritten(1) = " + writtenLengthBulk + "/" + buffer.length);
+                Log.d("AYE1337", "toHexString(1) = " + toHexString(buffer));
                 if (idEndPoint != idEndPointRDST) {
                     writtenLength = writtenLengthBulk;
                     if (idEndPoint != idEndPointRDDT) {
@@ -406,160 +283,142 @@ public class AULNetConnection {
                 }
 
                 writtenLength = writtenLengthBulk;
-                if (length <= 16) {
-                    writtenLength = writtenLengthBulk;
-                }
             }
         } else {
-            writtenLength = this.requestTcp(idEndPoint, buffer, length);
+            writtenLength = requestTcp(idEndPoint, buffer, length);
         }
 
         return writtenLength;
     }
 
-    public boolean CheckAUNVers() {
+    public boolean checkAUNVers() {
         boolean versionOk = false;
-        if (this.interfaceMode == Utils.TANetInterface.aniAUN || this.interfaceMode == Utils.TANetInterface.aniAUN2) {
+        if (interfaceMode == Utils.TANetInterface.aniAUN || interfaceMode == Utils.TANetInterface.aniAUN2) {
             byte[] buffer = new byte[16];
-            this.SelectUBA(CUBA_COMMAND2);
-            if (this.ReadRegister(42, buffer) < 0) {
+            selectUBA(CUBA_COMMAND2);
+            if (readRegister(42, buffer) < 0) {
                 buffer[0] = 0;
             }
-
-            if (buffer[0] == 1) { // :)
-                versionOk = true;
-            } else {
-                versionOk = false;
-            }
+            versionOk = buffer[0] == 1;
         }
 
         if (versionOk) {
-            this.interfaceMode = Utils.TANetInterface.aniAUN2;
+            interfaceMode = Utils.TANetInterface.aniAUN2;
         }
 
         return versionOk;
     }
 
-    public void CloseDevice() {
-        this.AULNetTransfer(idEndPointCLOSE, (byte[]) null, 0);
-        if (this.tcpSocket != null) {
+    public void closeDevice() {
+        AULNetTransfer(idEndPointCLOSE, null, 0);
+        if (tcpSocket != null) {
             try {
-                this.tcpSocket.close();
+                tcpSocket.close();
             } catch (IOException exception) {
                 exception.printStackTrace();
             }
         }
 
-        if (this.btSocket != null) {
+        if (btSocket != null) {
             try {
-                this.btSocket.close();
+                btSocket.close();
             } catch (IOException exception) {
                 exception.printStackTrace();
-                return;
             }
         }
-
     }
 
-    boolean Connect(boolean isDeviceExcisted) {
-        this.devInited = false;
-        if (isDeviceExcisted) {
-            this.AULNetTransfer(idEndPointCLOSE, (byte[]) null, 0);
-            this.demoMode = true;
+    boolean connect(boolean isDeviceExist) {
+        devInited = false;
+        if (isDeviceExist) {
+            AULNetTransfer(idEndPointCLOSE, null, 0);
+            demoMode = true;
         } else {
             int bufWrittenLength = 0;
             int writtenLength;
             byte[] bufferPassword;
-            if (this.interfaceMode != Utils.TANetInterface.aniALAN &&
-                    this.interfaceMode != Utils.TANetInterface.aniABT) {
-                UsbInterface usbInterface = this.device.getInterface(0);
+            if (interfaceMode != Utils.TANetInterface.aniALAN &&
+                    interfaceMode != Utils.TANetInterface.aniABT) {
+                UsbInterface usbInterface = device.getInterface(0);
                 if (usbInterface.getEndpointCount() < 4) {
-                    return this.Connect(true);
+                    return connect(true);
                 }
 
-                this.epSNDCMD = usbInterface.getEndpoint(0);
-                this.epRDST = usbInterface.getEndpoint(1);
-                this.epWRDT = usbInterface.getEndpoint(2);
-                this.epRDDT = usbInterface.getEndpoint(3);
-                this.connection = this.manager.openDevice(this.device);
-                this.connection.claimInterface(usbInterface, true);
+                epSNDCMD = usbInterface.getEndpoint(0);
+                epRDST = usbInterface.getEndpoint(1);
+                epWRDT = usbInterface.getEndpoint(2);
+                epRDDT = usbInterface.getEndpoint(3);
+                connection = manager.openDevice(device);
+                connection.claimInterface(usbInterface, true);
             } else {
                 bufferPassword = "AULNetPass ".getBytes();
                 bufferPassword[10] = 0;
-                writtenLength = this.AULNetTransfer(idEndPointPASSWORD, bufferPassword, 11);
+                writtenLength = AULNetTransfer(idEndPointPASSWORD, bufferPassword, 11);
                 bufWrittenLength = writtenLength;
                 if (writtenLength >= 0) {
-                    bufWrittenLength = this.AULNetTransfer(idEndPointUNLOCK, (byte[]) null, 0);
+                    bufWrittenLength = AULNetTransfer(idEndPointUNLOCK, null, 0);
                 }
             }
 
             bufferPassword = new byte[16];
             writtenLength = bufWrittenLength;
             if (bufWrittenLength >= 0) {
-                writtenLength = this.ReadRegister(221, bufferPassword);
+                writtenLength = readRegister(221, bufferPassword);
             }
 
-            this.devname = new String(bufferPassword, 0, 8);
-            if (!this.isValidDevice(this.devname)) {
-                return this.Connect(true);
+            devname = new String(bufferPassword, 0, 8);
+            if (!isValidDevice(devname)) {
+                return connect(true);
             }
 
-            this.demoMode = false;
+            demoMode = false;
             bufWrittenLength = writtenLength;
             if (writtenLength >= 0) {
-                bufWrittenLength = this.ReadRegister(222, bufferPassword);
+                bufWrittenLength = readRegister(222, bufferPassword);
             }
 
-            this.devname = this.devname + " #" + new String(bufferPassword, 0, 16);
+            devname = devname + " #" + new String(bufferPassword, 0, 16);
             if (bufWrittenLength >= 0) {
-                this.CheckAUNVers();
+                checkAUNVers();
             }
 
             if (bufWrittenLength >= 0) {
-                this.ResetDev();
+                resetDev();
             }
         }
 
-        ((Utils.IAULNetListener) this.pActivity).onANConnect(this);
-        return !this.demoMode;
+        ((Utils.IAULNetListener) pActivity).onANConnect(this);
+        return !demoMode;
     }
 
-    void Destroy() {
-        this.CloseDevice();
-        if (this.btStarted && this.mBluetoothAdapter.isEnabled()) {
-            this.mBluetoothAdapter.disable();
-        }
-
-    }
-
-    boolean InitConnection() {
-        if (this.interfaceMode == Utils.TANetInterface.aniALAN) {
-            InetSocketAddress inetSocketAddress = new InetSocketAddress(this.serverIP, this.serverPort);
-            new AULNetConnection.openSocketTask().execute(inetSocketAddress);
+    boolean initConnection() {
+        if (interfaceMode == Utils.TANetInterface.aniALAN) {
+            InetSocketAddress inetSocketAddress = new InetSocketAddress(serverIP, serverPort);
+            new OpenSocketTask().execute(inetSocketAddress);
             return true;
-        } else if (this.interfaceMode == Utils.TANetInterface.aniABT) {
-            return this.btFind();
+        } else if (interfaceMode == Utils.TANetInterface.aniABT) {
+            return btFind();
         } else {
-            this.manager = (UsbManager) this.pActivity.getSystemService(Context.USB_SERVICE);
-            if (this.manager == null) {
+            manager = (UsbManager) pActivity.getSystemService(Context.USB_SERVICE);
+            if (manager == null) {
                 return false;
             } else {
-                HashMap deviceList = this.manager.getDeviceList();
-                Iterator iteratorDeviceList = deviceList.values().iterator();
-                this.devCnt = 0;
+                HashMap<String, UsbDevice> deviceList = manager.getDeviceList();
+                Iterator<UsbDevice> iteratorDeviceList = deviceList.values().iterator();
+                int devCnt = 0;
                 if (deviceList.isEmpty()) {
                     return false;
                 } else {
                     while (iteratorDeviceList.hasNext()) {
-                        ++this.devCnt;
-                        this.device = (UsbDevice) iteratorDeviceList.next();
+                        ++devCnt;
+                        device = iteratorDeviceList.next();
                     }
 
-                    PendingIntent pendingIntent = PendingIntent.getBroadcast(this.pActivity, 0, new Intent("com.android.example.USB_PERMISSION"), 0);
+                    PendingIntent pendingIntent = PendingIntent.getBroadcast(pActivity, 0, new Intent("com.android.example.USB_PERMISSION"), 0);
                     IntentFilter intentFilter = new IntentFilter("com.android.example.USB_PERMISSION");
-                    this.pActivity.registerReceiver(this.mUsbReceiver, intentFilter);
-                    this.manager.requestPermission(this.device, pendingIntent);
-                    return this.devCnt > 0;
+                    pActivity.registerReceiver(mUsbReceiver, intentFilter);
+                    manager.requestPermission(device, pendingIntent);
+                    return devCnt > 0;
                 }
             }
         }
@@ -568,29 +427,29 @@ public class AULNetConnection {
     public boolean isValidDevice(String var1) {
         boolean isValidDevice = false;
 
-        for (int device = 0; device < this.supportedDevs.length; ++device) {
-            isValidDevice |= var1.startsWith(this.supportedDevs[device]);
+        for (String supportedDev : supportedDevs) {
+            isValidDevice |= var1.startsWith(supportedDev);
         }
 
         return isValidDevice;
     }
 
-    public int ReadData(byte[] buffer, byte value) {
+    public int readData(byte[] buffer, byte value) {
         short length = 512;
         byte[] bufferCommand = new byte[512];
-        if (this.interfaceMode != Utils.TANetInterface.aniAUN2) {
+        if (interfaceMode != Utils.TANetInterface.aniAUN2) {
             length = 64;
         }
 
         bufferCommand[0] = _READ_FUNCTION;
         bufferCommand[1] = value;
-        this.AULNetTransfer(idEndPointSNDCM, bufferCommand, 2);
-        this.AULNetTransfer(idEndPointRDDT, bufferCommand, length);
+        AULNetTransfer(idEndPointSNDCM, bufferCommand, 2);
+        AULNetTransfer(idEndPointRDDT, bufferCommand, length);
         int lengthBuffer = -1;
 
         int lengthRDDT;
         for (int lengthNeed = 0; lengthNeed < buffer.length; lengthBuffer = lengthRDDT) {
-            lengthRDDT = this.AULNetTransfer(idEndPointRDDT, bufferCommand, length);
+            lengthRDDT = AULNetTransfer(idEndPointRDDT, bufferCommand, length);
             if (buffer.length - lengthNeed >= length) {
                 lengthBuffer = length;
             } else {
@@ -610,7 +469,7 @@ public class AULNetConnection {
         return lengthBuffer;
     }
 
-    public int ReadRegister(int command, byte[] bufferRead) {
+    public int readRegister(int command, byte[] bufferRead) {
         byte length = 1;
         byte[] bufferCommand = new byte[16];
         if (221 == command) {
@@ -635,17 +494,17 @@ public class AULNetConnection {
             }
         }
 
-        this.AULNetTransfer(idEndPointSNDCM, bufferCommand, length);
-        this.AULNetTransfer(idEndPointRDST, bufferRead, 16);
-        return this.AULNetTransfer(idEndPointRDST, bufferRead, 16);
+        AULNetTransfer(idEndPointSNDCM, bufferCommand, length);
+        AULNetTransfer(idEndPointRDST, bufferRead, 16);
+        return AULNetTransfer(idEndPointRDST, bufferRead, 16);
     }
 
-    public void ResetDev() {
-        this.devInited = false;
-        this.SelectUBA(CUBA_COMMAND1);
+    public void resetDev() {
+        devInited = false;
+        selectUBA(CUBA_COMMAND1);
         (new Handler()).postDelayed(new Runnable() {
             public void run() {
-                AULNetConnection.this.devInited = true;
+                devInited = true;
 
                 try {
                     TimeUnit.MILLISECONDS.sleep(50L);
@@ -656,31 +515,31 @@ public class AULNetConnection {
         }, 500L);
     }
 
-    public int SelectUBA(byte cubaCommand) {
+    public int selectUBA(byte cubaCommand) {
         byte[] bufferCommand = new byte[16];
         bufferCommand[0] = CUBA_FUNCTION;
         bufferCommand[1] = cubaCommand;
-        this.cUBA = cubaCommand;
-        return this.AULNetTransfer(idEndPointSNDCM, bufferCommand, 2);
+        cUBA = cubaCommand;
+        return AULNetTransfer(idEndPointSNDCM, bufferCommand, 2);
     }
 
-    public int WriteData(byte[] bufferWrite, byte value) {
+    public int writeData(byte[] bufferWrite, byte value) {
         byte[] bufferCommand = new byte[16];
         bufferCommand[0] = _READ_FUNCTION;
         bufferCommand[1] = value;
-        this.AULNetTransfer(idEndPointSNDCM, bufferCommand, 2);
-        return this.AULNetTransfer(idEndPointWRDT, bufferWrite, bufferWrite.length);
+        AULNetTransfer(idEndPointSNDCM, bufferCommand, 2);
+        return AULNetTransfer(idEndPointWRDT, bufferWrite, bufferWrite.length);
     }
 
-    public int WriteRegister(int command, byte value) {
+    public int writeRegister(int command, byte value) {
         byte[] bufferCommand = new byte[16];
         bufferCommand[0] = WRITE_FUNCTION;
         bufferCommand[1] = (byte) command;
         bufferCommand[2] = value;
-        return this.AULNetTransfer(idEndPointSNDCM, bufferCommand, 3);
+        return AULNetTransfer(idEndPointSNDCM, bufferCommand, 3);
     }
 
-    public int WriteRegister(int command, byte[] commandBytes) {
+    public int writeRegister(int command, byte[] commandBytes) {
         byte[] bufferCommand = new byte[16];
         bufferCommand[0] = WRITE_FUNCTION;
         bufferCommand[1] = (byte) command;
@@ -702,41 +561,41 @@ public class AULNetConnection {
             }
         }
 
-        return this.AULNetTransfer(idEndPointSNDCM, bufferCommand, length);
+        return AULNetTransfer(idEndPointSNDCM, bufferCommand, length);
     }
 
     public boolean btFind() {
-        this.mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (!this.mBluetoothAdapter.isEnabled()) {
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (!mBluetoothAdapter.isEnabled()) {
             Intent intent = new Intent("android.bluetooth.adapter.action.REQUEST_ENABLE");
-            this.pActivity.startActivityForResult(intent, 101);
+            pActivity.startActivityForResult(intent, BT_ENABLE_REQUEST);
             return false;
         } else {
-            this.BTDevList = new HashSet();
-            this.BTDevList.clear();
-            boolean var1 = this.mBluetoothAdapter.startDiscovery();
-            this.pActivity.registerReceiver(this.bReceiver, new IntentFilter("android.bluetooth.device.action.FOUND"));
-            this.pActivity.registerReceiver(this.bReceiver, new IntentFilter("android.bluetooth.adapter.action.DISCOVERY_FINISHED"));
+            BTDevList = new HashSet<>();
+            BTDevList.clear();
+            boolean var1 = mBluetoothAdapter.startDiscovery();
+            pActivity.registerReceiver(bReceiver, new IntentFilter("android.bluetooth.device.action.FOUND"));
+            pActivity.registerReceiver(bReceiver, new IntentFilter("android.bluetooth.adapter.action.DISCOVERY_FINISHED"));
             return var1;
         }
     }
 
     public boolean isDemoMode() {
-        return this.demoMode;
+        return demoMode;
     }
 
 
-    private class openBtSocketTask extends AsyncTask<BluetoothDevice, Void, BluetoothSocket> {
+    private class OpenBtSocketTask extends AsyncTask<BluetoothDevice, Void, BluetoothSocket> {
         private final UUID BTMODULEUUID;
 
-        private openBtSocketTask() {
-            this.BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+        private OpenBtSocketTask() {
+            BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
         }
 
         protected BluetoothSocket doInBackground(BluetoothDevice... var1) {
             try {
-                BluetoothSocket bluetoothSocket = var1[0].createRfcommSocketToServiceRecord(this.BTMODULEUUID);
-                AULNetConnection.this.mBluetoothAdapter.cancelDiscovery();
+                BluetoothSocket bluetoothSocket = var1[0].createRfcommSocketToServiceRecord(BTMODULEUUID);
+                mBluetoothAdapter.cancelDiscovery();
                 bluetoothSocket.connect();
                 return bluetoothSocket;
             } catch (IOException e) {
@@ -746,7 +605,7 @@ public class AULNetConnection {
         }
 
         protected void onPostExecute(BluetoothSocket bluetoothSocket) {
-            AULNetConnection.this.btSocket = bluetoothSocket;
+            btSocket = bluetoothSocket;
 
             try {
                 TimeUnit.MILLISECONDS.sleep(100L);
@@ -756,20 +615,13 @@ public class AULNetConnection {
 
             AULNetConnection aulNetConnection = AULNetConnection.this;
             boolean isNotConnected;
-            if (AULNetConnection.this.btSocket == null) {
-                isNotConnected = true;
-            } else {
-                isNotConnected = false;
-            }
+            isNotConnected = btSocket == null;
 
-            aulNetConnection.Connect(isNotConnected);
+            aulNetConnection.connect(isNotConnected);
         }
     }
 
-    private class openSocketTask extends AsyncTask<InetSocketAddress, Void, Socket> {
-        private openSocketTask() {
-        }
-
+    private class OpenSocketTask extends AsyncTask<InetSocketAddress, Void, Socket> {
         protected Socket doInBackground(InetSocketAddress... inetSocketAddresses) {
             try {
                 Socket socket = new Socket();
@@ -782,233 +634,212 @@ public class AULNetConnection {
             }
         }
 
-        protected void onPostExecute(Socket var1) {
-            AULNetConnection.this.CloseDevice();
-            AULNetConnection.this.tcpSocket = var1;
-            AULNetConnection var3 = AULNetConnection.this;
+        protected void onPostExecute(Socket socket) {
+            closeDevice();
+            tcpSocket = socket;
+            AULNetConnection aulNetConnection = AULNetConnection.this;
             boolean isNotConnected;
-            if (AULNetConnection.this.tcpSocket == null) {
-                isNotConnected = true;
-            } else {
-                isNotConnected = false;
-            }
+            isNotConnected = tcpSocket == null;
 
-            var3.Connect(isNotConnected);
+            aulNetConnection.connect(isNotConnected);
         }
     }
 
-    private class transferData {
+    private class TransferData {
         public byte[] buf;
         public byte[] hlp;
         public int hlpsize;
         public boolean read;
         public int size;
 
-        private transferData() {
-            this.hlp = new byte[8];
-            this.hlpsize = 0;
+        private TransferData() {
+            hlp = new byte[8];
+            hlpsize = 0;
         }
 
         public void newBuf(int size) {
-            this.buf = new byte[size];
+            buf = new byte[size];
         }
     }
 
-    private class transferSocketTask extends AsyncTask<AULNetConnection.transferData, Void, Integer> {
+    private class TransferSocketTask extends AsyncTask<TransferData, Void, Integer> {
         private static final int AULNET_HDRSIZE = 28;
 
-        private transferSocketTask() {
-        }
-
-        protected Integer doInBackground(AULNetConnection.transferData... transferDatas) {
+        protected Integer doInBackground(TransferData... TransferData) {
             boolean isBTSocket = false;
-            if (AULNetConnection.this.interfaceMode != Utils.TANetInterface.aniALAN || AULNetConnection.this.tcpSocket == null) {
-                if (AULNetConnection.this.interfaceMode != Utils.TANetInterface.aniABT || AULNetConnection.this.btSocket == null) {
+            if (interfaceMode != Utils.TANetInterface.aniALAN || tcpSocket == null) {
+                if (interfaceMode != Utils.TANetInterface.aniABT || btSocket == null) {
                     return -3;
                 }
 
                 isBTSocket = true;
             }
 
-            UnknownHostException unknownHostException;
+            int var4 = TransferData[0].hlpsize + 28;
+            int length = var4;
+            if (!TransferData[0].read) {
+                length = var4 + TransferData[0].size;
+            }
 
-            label220:
-            {
-                IOException ioException;
-                label237:
+            if (TransferData[0].buf == null) {
+                return -2;
+            } else {
+                byte[] buffer;
+                byte buffer20;
+                byte buffer21;
+                byte buffer22;
+                byte buffer23;
+                int bufferSize;
+                label1:
                 {
-                    int var4;
-                    var4 = transferDatas[0].hlpsize + 28;
-
-                    int var3 = var4;
-
-                    if (!transferDatas[0].read) {
-                        var3 = var4 + transferDatas[0].size;
-                    }
-
-                    if (transferDatas[0].buf == null) {
-                        return -2;
-                    }
-
-                    OutputStream outputStream;
-                    if (isBTSocket) {
-                        try {
-                            outputStream = AULNetConnection.this.btSocket.getOutputStream();
-                        } catch (UnknownHostException e) {
-                            unknownHostException = e;
-                            break label220;
-                        } catch (IOException e) {
-                            ioException = e;
-                            break label237;
-                        }
-                    } else {
-                        try {
-                            outputStream = AULNetConnection.this.tcpSocket.getOutputStream();
-                        } catch (UnknownHostException e) {
-                            unknownHostException = e;
-                            break label220;
-                        } catch (IOException e) {
-                            ioException = e;
-                            break label237;
-                        }
-                    }
-
-                    try {
-                        DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
-                        AULNetConnection.this.outCmdCode = transferDatas[0].buf[12];
-                        dataOutputStream.write(transferDatas[0].buf, 0, var3);
-                        dataOutputStream.flush();
-                        toHexString(transferDatas[0].buf);
-                    } catch (UnknownHostException e) {
-                        unknownHostException = e;
-                        break label220;
-                    } catch (IOException e) {
-                        ioException = e;
-                        break label237;
-                    }
-
-                    InputStream var58;
-                    if (isBTSocket) {
-                        try {
-                            var58 = AULNetConnection.this.btSocket.getInputStream();
-                        } catch (UnknownHostException e) {
-                            unknownHostException = e;
-                            break label220;
-                        } catch (IOException e) {
-                            ioException = e;
-                            break label237;
-                        }
-                    } else {
-                        try {
-                            var58 = AULNetConnection.this.tcpSocket.getInputStream();
-                        } catch (UnknownHostException e) {
-                            unknownHostException = e;
-                            break label220;
-                        } catch (IOException e) {
-                            ioException = e;
-                            break label237;
-                        }
-                    }
-
-                    byte[] var12;
-                    DataInputStream dataInputStream;
-                    dataInputStream = new DataInputStream(var58);
-                    var12 = new byte[28];
-
-                    int var55 = 0;
-
-                    long time;
-                    time = System.currentTimeMillis();
-
-                    do {
-                        try {
-                            var3 = var55 + dataInputStream.read(var12, var55, 28 - var55);
-                        } catch (UnknownHostException e) {
-                            unknownHostException = e;
-                            break label220;
-                        } catch (IOException e) {
-                            ioException = e;
-                            break label237;
-                        }
-
-                        if (var3 < 0) {
-                            if (System.currentTimeMillis() - time >= 50L) {
-                                break;
-                            }
-                        }
-
-                        var55 = var3;
-                    } while (var3 < 28);
-
-                    if (var3 < 0) {
-                        return -3;
-                    } else {
-                        label239:
+                    UnknownHostException unknownHostException;
+                    label2:
+                    {
+                        IOException ioException;
+                        label3:
                         {
-                            if (var12[12] != AULNetConnection.this.outCmdCode) {
-                                System.exit(-3);
+                            OutputStream outputStream;
+                            if (isBTSocket) {
+                                try {
+                                    outputStream = btSocket.getOutputStream();
+                                } catch (UnknownHostException e) {
+                                    unknownHostException = e;
+                                    break label2;
+                                } catch (IOException e) {
+                                    ioException = e;
+                                    break label3;
+                                }
+                            } else {
+                                try {
+                                    outputStream = tcpSocket.getOutputStream();
+                                } catch (UnknownHostException e) {
+                                    unknownHostException = e;
+                                    break label2;
+                                } catch (IOException e) {
+                                    ioException = e;
+                                    break label3;
+                                }
                             }
 
-                            byte var56 = var12[20];
-                            byte var5 = var12[21];
-                            byte var6 = var12[22];
-                            byte var7 = var12[23];
-                            int var8 = (var12[24] & 255) + ((var12[25] & 255) << 8) + ((var12[26] & 255) << 16) + ((var12[27] & 255) << 24);
-                            if (var8 <= 0) {
-                                return (var56 & 255) + ((var5 & 255) << 8) + ((var6 & 255) << 16) + ((var7 & 255) << 24);
+                            try {
+                                DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
+                                outCmdCode = TransferData[0].buf[12];
+                                dataOutputStream.write(TransferData[0].buf, 0, length);
+                                dataOutputStream.flush();
+                                Utils.toHexString(TransferData[0].buf);
+                            } catch (UnknownHostException e) {
+                                unknownHostException = e;
+                                break label2;
+                            } catch (IOException e) {
+                                ioException = e;
+                                break label3;
                             }
 
-                            var12 = new byte[var8];
+                            InputStream inputStream;
+                            if (isBTSocket) {
+                                try {
+                                    inputStream = btSocket.getInputStream();
+                                } catch (UnknownHostException e) {
+                                    unknownHostException = e;
+                                    break label2;
+                                } catch (IOException e) {
+                                    ioException = e;
+                                    break label3;
+                                }
+                            } else {
+                                try {
+                                    inputStream = tcpSocket.getInputStream();
+                                } catch (UnknownHostException e) {
+                                    unknownHostException = e;
+                                    break label2;
+                                } catch (IOException e) {
+                                    ioException = e;
+                                    break label3;
+                                }
+                            }
 
-                            var55 = 0;
+                            DataInputStream dataInputStream = new DataInputStream(inputStream);
+                            buffer = new byte[28];
+                            int offset = 0;
+                            long time = System.currentTimeMillis();
 
                             do {
                                 try {
-                                    var3 = var55 + dataInputStream.read(var12, var55, var8 - var55);
+                                    length = offset + dataInputStream.read(buffer, offset, 28 - offset);
                                 } catch (UnknownHostException e) {
                                     unknownHostException = e;
-                                    break label220;
+                                    break label2;
                                 } catch (IOException e) {
                                     ioException = e;
-                                    break label239;
+                                    break label3;
                                 }
 
-                                if (var3 < 0) {
+                                if (length < 0 && System.currentTimeMillis() - time >= 50L) {
                                     break;
                                 }
 
-                                var55 = var3;
-                            } while (var3 < var8);
+                                offset = length;
+                            } while (length < 28);
 
-                            if (var3 < 0) {
+                            if (length < 0) {
                                 return -3;
-                            } else {
-                                label157:
-                                {
-                                    if (transferDatas[0].size >= var8 && transferDatas[0].buf != null) {
-                                        break label157;
-                                    }
-                                    return -2;
+                            }
+
+                            if (buffer[12] != outCmdCode) {
+                                System.exit(-3);
+                            }
+
+                            buffer20 = buffer[20];
+                            buffer21 = buffer[21];
+                            buffer22 = buffer[22];
+                            buffer23 = buffer[23];
+                            bufferSize = (buffer[24] & 255) + ((buffer[25] & 255) << 8) + ((buffer[26] & 255) << 16) + ((buffer[27] & 255) << 24);
+                            if (bufferSize <= 0) {
+                                return (buffer20 & 255) + ((buffer21 & 255) << 8) + ((buffer22 & 255) << 16) + ((buffer23 & 255) << 24);
+                            }
+
+                            buffer = new byte[bufferSize];
+                            offset = 0;
+
+                            while (true) {
+                                try {
+                                    length = offset + dataInputStream.read(buffer, offset, bufferSize - offset);
+                                } catch (UnknownHostException e) {
+                                    unknownHostException = e;
+                                    break label2;
+                                } catch (IOException e) {
+                                    ioException = e;
+                                    break;
                                 }
 
-                                System.arraycopy(var12, 0, transferDatas[0].buf, 28, var8);
-                                return (var56 & 255) + ((var5 & 255) << 8) + ((var6 & 255) << 16) + ((var7 & 255) << 24);
+                                if (length < 0) {
+                                    break label1;
+                                }
+
+                                offset = length;
+                                if (length >= bufferSize) {
+                                    break label1;
+                                }
                             }
                         }
+
+                        ioException.printStackTrace();
+                        return -1;
                     }
+
+                    unknownHostException.printStackTrace();
+                    return -3;
                 }
 
-                IOException ioException1 = ioException;
-                ioException1.printStackTrace();
-                return -1;
+                if (length < 0) {
+                    return -3;
+                } else if (TransferData[0].size >= bufferSize && TransferData[0].buf != null) {
+                    System.arraycopy(buffer, 0, TransferData[0].buf, 28, bufferSize);
+                    return (buffer20 & 255) + ((buffer21 & 255) << 8) + ((buffer22 & 255) << 16) + ((buffer23 & 255) << 24);
+                } else {
+                    return -2;
+                }
             }
-
-            UnknownHostException unknownHostException1 = unknownHostException;
-            unknownHostException1.printStackTrace();
-            return -3;
-        }
-
-        protected void onPostExecute(Integer var1) {
         }
     }
 }
